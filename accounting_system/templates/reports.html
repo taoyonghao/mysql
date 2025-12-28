@@ -1,0 +1,354 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>财务分析报表</h4>
+            </div>
+            <div class="card-body">
+                <!-- 月度收支趋势图 -->
+                <div class="row mb-5">
+                    <div class="col-12">
+                        <h5 class="mb-3">月度收支趋势</h5>
+                        <div class="chart-container" style="position: relative; height:400px;">
+                            <canvas id="monthlyChart"></canvas>
+                        </div>
+                        <div class="text-center mt-3">
+                            <div class="d-inline-flex flex-wrap justify-content-center gap-3">
+                                <span class="badge bg-success px-3 py-2">
+                                    <i class="fas fa-square me-1"></i>收入
+                                </span>
+                                <span class="badge bg-danger px-3 py-2">
+                                    <i class="fas fa-square me-1"></i>支出
+                                </span>
+                                <span class="badge bg-primary px-3 py-2">
+                                    <i class="fas fa-line-chart me-1"></i>余额（折线）
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 分类占比图 -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card border-success mb-4">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="mb-0"><i class="fas fa-money-bill-wave me-2"></i>收入来源分析</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="position: relative; height:300px;">
+                                    <canvas id="incomeCategoryChart"></canvas>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <small class="text-muted">各收入来源所占比例</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card border-danger mb-4">
+                            <div class="card-header bg-danger text-white">
+                                <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>支出结构分析</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container" style="position: relative; height:300px;">
+                                    <canvas id="expenseCategoryChart"></canvas>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <small class="text-muted">各项支出所占比例</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 数据说明 -->
+                <div class="alert alert-light border mt-4">
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <i class="fas fa-info-circle fa-2x text-info"></i>
+                        </div>
+                        <div>
+                            <h6 class="alert-heading">报表说明</h6>
+                            <ul class="mb-0 small">
+                                <li><strong>月度收支趋势图</strong>：展示最近12个月的收入、支出和余额变化</li>
+                                <li><strong>收入来源分析</strong>：显示您的收入主要来自哪些分类</li>
+                                <li><strong>支出结构分析</strong>：显示您的支出主要用在哪些方面</li>
+                                <li>数据每添加新记录后自动更新，刷新页面查看最新图表</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 月度趋势图表
+async function loadMonthlyChart() {
+    try {
+        const response = await fetch('/api/monthly_data');
+        const data = await response.json();
+
+        // 反转数据，让时间从旧到新
+        const reversedData = [...data].reverse();
+
+        const months = reversedData.map(item => item.month);
+        const incomeData = reversedData.map(item => item.income || 0);
+        const expenseData = reversedData.map(item => item.expense || 0);
+        const balanceData = reversedData.map(item => item.balance || 0);
+
+        const ctx = document.getElementById('monthlyChart').getContext('2d');
+
+        // 如果已有图表实例，销毁它
+        if (window.monthlyChartInstance) {
+            window.monthlyChartInstance.destroy();
+        }
+
+        window.monthlyChartInstance = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: '收入',
+                        data: incomeData,
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        borderColor: 'rgba(40, 167, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '支出',
+                        data: expenseData,
+                        backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                        borderColor: 'rgba(220, 53, 69, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: '余额',
+                        data: balanceData,
+                        type: 'line',
+                        fill: false,
+                        borderColor: 'rgba(13, 110, 253, 1)',
+                        backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        pointBackgroundColor: 'rgba(13, 110, 253, 1)',
+                        pointRadius: 5,
+                        pointHoverRadius: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += '¥' + context.parsed.y.toFixed(2);
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return '¥' + value.toFixed(0);
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: '金额（元）'
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('加载月度数据失败:', error);
+        document.getElementById('monthlyChart').parentElement.innerHTML =
+            '<div class="alert alert-warning text-center py-5">' +
+            '<i class="fas fa-exclamation-triangle fa-2x mb-3"></i><br>' +
+            '加载图表数据失败，请稍后重试</div>';
+    }
+}
+
+// 分类饼图
+async function loadCategoryChart() {
+    try {
+        const response = await fetch('/api/category_data');
+        const data = await response.json();
+
+        // 分离收入和支出分类
+        const incomeCategories = data.filter(item => item.type === '收入' && Math.abs(item.total) > 0);
+        const expenseCategories = data.filter(item => item.type === '支出' && Math.abs(item.total) > 0);
+
+        // 收入饼图
+        if (incomeCategories.length > 0) {
+            const ctx1 = document.getElementById('incomeCategoryChart').getContext('2d');
+
+            // 如果已有图表实例，销毁它
+            if (window.incomeChartInstance) {
+                window.incomeChartInstance.destroy();
+            }
+
+            window.incomeChartInstance = new Chart(ctx1, {
+                type: 'pie',
+                data: {
+                    labels: incomeCategories.map(item => item.name),
+                    datasets: [{
+                        data: incomeCategories.map(item => Math.abs(item.total)),
+                        backgroundColor: [
+                            '#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B',
+                            '#FFC107', '#FF9800', '#FF5722', '#795548',
+                            '#9C27B0', '#673AB7', '#3F51B5', '#2196F3'
+                        ],
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ¥${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('incomeCategoryChart').parentElement.innerHTML =
+                '<div class="text-center py-5">' +
+                '<i class="fas fa-chart-pie fa-3x text-muted mb-3"></i><br>' +
+                '<p class="text-muted">暂无收入数据</p>' +
+                '<a href="{{ url_for("add_record") }}" class="btn btn-sm btn-success">添加收入记录</a>' +
+                '</div>';
+        }
+
+        // 支出饼图
+        if (expenseCategories.length > 0) {
+            const ctx2 = document.getElementById('expenseCategoryChart').getContext('2d');
+
+            // 如果已有图表实例，销毁它
+            if (window.expenseChartInstance) {
+                window.expenseChartInstance.destroy();
+            }
+
+            window.expenseChartInstance = new Chart(ctx2, {
+                type: 'pie',
+                data: {
+                    labels: expenseCategories.map(item => item.name),
+                    datasets: [{
+                        data: expenseCategories.map(item => Math.abs(item.total)),
+                        backgroundColor: [
+                            '#F44336', '#E91E63', '#9C27B0', '#673AB7',
+                            '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4',
+                            '#009688', '#4CAF50', '#8BC34A', '#CDDC39'
+                        ],
+                        borderWidth: 1,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return `${label}: ¥${value.toFixed(2)} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            document.getElementById('expenseCategoryChart').parentElement.innerHTML =
+                '<div class="text-center py-5">' +
+                '<i class="fas fa-chart-pie fa-3x text-muted mb-3"></i><br>' +
+                '<p class="text-muted">暂无支出数据</p>' +
+                '<a href="{{ url_for("add_record") }}" class="btn btn-sm btn-danger">添加支出记录</a>' +
+                '</div>';
+        }
+    } catch (error) {
+        console.error('加载分类数据失败:', error);
+        document.getElementById('incomeCategoryChart').parentElement.innerHTML =
+            '<div class="alert alert-warning text-center py-5">加载数据失败</div>';
+        document.getElementById('expenseCategoryChart').parentElement.innerHTML =
+            '<div class="alert alert-warning text-center py-5">加载数据失败</div>';
+    }
+}
+
+// 页面加载完成后执行
+document.addEventListener('DOMContentLoaded', function() {
+    loadMonthlyChart();
+    loadCategoryChart();
+
+    // 添加刷新按钮事件
+    const refreshBtn = document.createElement('button');
+    refreshBtn.className = 'btn btn-outline-secondary btn-sm';
+    refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i>刷新图表';
+    refreshBtn.onclick = function() {
+        loadMonthlyChart();
+        loadCategoryChart();
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>刷新中...';
+        setTimeout(() => {
+            this.innerHTML = '<i class="fas fa-sync-alt me-1"></i>刷新图表';
+        }, 1000);
+    };
+
+    // 将刷新按钮添加到页面
+    const cardHeader = document.querySelector('.card-header.bg-primary');
+    if (cardHeader) {
+        refreshBtn.style.position = 'absolute';
+        refreshBtn.style.right = '20px';
+        refreshBtn.style.top = '50%';
+        refreshBtn.style.transform = 'translateY(-50%)';
+        cardHeader.style.position = 'relative';
+        cardHeader.appendChild(refreshBtn);
+    }
+});
+</script>
+{% endblock %}

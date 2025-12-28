@@ -1,0 +1,775 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- 左侧：功能面板 -->
+    <div class="col-md-4">
+        <!-- 财务状态卡片 -->
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>当前财务状态</h5>
+            </div>
+            <div class="card-body">
+                {% if has_data %}
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <div class="text-success">
+                            <div class="display-6">¥ {{ "%.2f"|format(monthly_income) }}</div>
+                            <small class="text-muted">本月收入</small>
+                        </div>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <div class="text-danger">
+                            <div class="display-6">¥ {{ "%.2f"|format(monthly_expense) }}</div>
+                            <small class="text-muted">本月支出</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <strong>数据就绪</strong> - AI可以基于您的 {{ monthly_income + monthly_expense }} 元流水进行分析
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">暂无数据</h5>
+                    <p class="text-muted small">请先添加收支记录，AI才能进行分析</p>
+                    <a href="{{ url_for('add_record') }}" class="btn btn-primary mt-2">
+                        <i class="fas fa-plus me-2"></i>添加记录
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- AI功能卡片 -->
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI分析功能</h5>
+            </div>
+            <div class="card-body">
+                {% if has_data %}
+                <div class="d-grid gap-2">
+                    <button id="btnAnalyze" class="btn btn-primary btn-lg py-3" onclick="analyzeBills()">
+                        <i class="fas fa-chart-pie me-2"></i>智能账单分析
+                        <span class="badge bg-white text-primary ms-2">推荐</span>
+                    </button>
+
+                    <div class="dropdown mt-2">
+                        <button class="btn btn-success w-100 py-3 dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown" {% if not has_data %}disabled{% endif %}>
+                            <i class="fas fa-bullseye me-2"></i>财务规划建议
+                        </button>
+                        <ul class="dropdown-menu w-100">
+                            <li><a class="dropdown-item" href="#" onclick="getPlan('一般储蓄规划')">
+                                <i class="fas fa-piggy-bank me-2"></i>一般储蓄规划
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="getPlan('旅行基金规划')">
+                                <i class="fas fa-plane me-2"></i>旅行基金规划
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="getPlan('紧急备用金规划')">
+                                <i class="fas fa-shield-alt me-2"></i>紧急备用金规划
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="getPlan('投资理财规划')">
+                                <i class="fas fa-chart-line me-2"></i>投资理财规划
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#customPlanModal">
+                                <i class="fas fa-edit me-2"></i>自定义规划目标
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6><i class="fas fa-question-circle me-2"></i>快捷提问</h6>
+                    <div class="d-flex flex-wrap gap-2 mt-2">
+                        <button class="btn btn-outline-info btn-sm" onclick="askQuestion('如何省钱？')">如何省钱？</button>
+                        <button class="btn btn-outline-info btn-sm" onclick="askQuestion('我的消费合理吗？')">消费合理吗？</button>
+                        <button class="btn btn-outline-info btn-sm" onclick="askQuestion('怎样制定预算？')">制定预算</button>
+                        <button class="btn btn-outline-info btn-sm" onclick="askQuestion('有哪些省钱技巧？')">省钱技巧</button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    请先添加收支记录，才能使用AI功能
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- API状态卡片 -->
+        <div class="card dashboard-card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-plug me-2"></i>服务状态</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>DeepSeek API</span>
+                    <span class="badge bg-success" id="apiStatus">检查中...</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>数据库连接</span>
+                    <span class="badge bg-success">正常</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>AI服务响应</span>
+                    <span class="badge bg-secondary">待测试</span>
+                </div>
+
+                <hr class="my-3">
+
+                <button class="btn btn-outline-info btn-sm w-100" onclick="testAIService()">
+                    <i class="fas fa-bolt me-2"></i>测试AI连接
+                </button>
+
+                <small class="text-muted d-block mt-2">
+                    <i class="fas fa-info-circle me-1"></i>
+                    使用DeepSeek官方API，响应时间约5-10秒
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：AI对话区域 -->
+    <div class="col-md-8">
+        <!-- AI对话主区域 -->
+        <div class="card dashboard-card mb-4" style="height: 500px;">
+            <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-comments me-2"></i>AI财务顾问</h5>
+                <div>
+                    <span class="badge bg-light text-primary">DeepSeek AI</span>
+                    <button class="btn btn-sm btn-light ms-2" onclick="clearChat()">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0 d-flex flex-column">
+                <!-- 消息显示区域 -->
+                <div id="chatMessages" class="flex-grow-1 p-3 overflow-auto"
+                     style="max-height: 350px; min-height: 350px;">
+                    <div class="text-center text-muted py-5" id="welcomeMessage">
+                        <div class="ai-welcome-icon mb-3">
+                            <i class="fas fa-robot fa-4x text-primary"></i>
+                        </div>
+                        <h4 class="text-primary mb-3">🤖 AI财务顾问已就绪</h4>
+                        <p class="mb-4">基于DeepSeek AI技术，为您提供专业的财务分析和规划建议</p>
+
+                        {% if has_data %}
+                        <div class="d-flex justify-content-center gap-3">
+                            <button class="btn btn-primary" onclick="analyzeBills()">
+                                <i class="fas fa-chart-pie me-2"></i>开始账单分析
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="askQuestion('你好，请介绍一下你的功能')">
+                                <i class="fas fa-question me-2"></i>打个招呼
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            请先添加收支记录，AI才能为您提供个性化分析
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="border-top p-3 bg-light">
+                    <div class="input-group">
+                        <input type="text" id="chatInput" class="form-control border-primary"
+                               placeholder="输入您的财务问题（例如：如何制定预算？）..."
+                               {% if not has_data %}disabled{% endif %}>
+                        <button class="btn btn-primary" onclick="sendMessage()" {% if not has_data %}disabled{% endif %}>
+                            <i class="fas fa-paper-plane"></i> 发送
+                        </button>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <small class="text-muted">
+                            <i class="fas fa-keyboard me-1"></i>按 Enter 发送
+                        </small>
+                        <small class="text-muted">
+                            <i class="fas fa-bolt me-1"></i>Powered by DeepSeek AI
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析历史 -->
+        <div class="card dashboard-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>分析历史</h5>
+                <span class="badge bg-primary">{{ history|length }} 条记录</span>
+            </div>
+            <div class="card-body p-0">
+                {% if history %}
+                    <div class="list-group list-group-flush">
+                        {% for item in history %}
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between">
+                                <div class="mb-1">
+                                    <span class="badge
+                                        {% if item.analysis_type == '账单分析' %}bg-primary
+                                        {% elif item.analysis_type == '财务规划' %}bg-success
+                                        {% else %}bg-info{% endif %} me-2">
+                                        {{ item.analysis_type }}
+                                    </span>
+                                    <small class="text-muted">
+                                        {{ item.created_at.strftime('%m-%d %H:%M') if item.created_at else '' }}
+                                    </small>
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-outline-primary"
+                                            onclick="viewHistoryDetail({{ item.id }})">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <a href="{{ url_for('ai_delete', analysis_id=item.id) }}"
+                                       class="btn btn-sm btn-outline-danger"
+                                       onclick="return confirm('确定删除这条记录吗？')">
+                                        <i class="fas fa-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            <p class="mb-1 text-truncate">
+                                {% if item.user_input %}
+                                    {{ item.user_input[:50] }}{% if item.user_input|length > 50 %}...{% endif %}
+                                {% else %}
+                                    <span class="text-muted">无输入内容</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">暂无分析历史记录</p>
+                        <p class="text-muted small">使用AI功能后，历史记录将显示在这里</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 自定义规划模态框 -->
+<div class="modal fade" id="customPlanModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-bullseye me-2"></i>自定义规划目标</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="customTarget" class="form-label">请输入您的财务目标：</label>
+                    <input type="text" class="form-control" id="customTarget"
+                           placeholder="例如：6个月内存够3万元旅游基金">
+                    <div class="form-text">请尽量具体描述您的目标，AI会为您制定详细的规划。</div>
+                </div>
+                <div class="alert alert-info">
+                    <i class="fas fa-lightbulb me-2"></i>
+                    <strong>提示：</strong> AI会根据您设定的目标，结合您的收支情况，制定详细的执行计划和预算方案。
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" onclick="submitCustomPlan()">开始规划</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 历史详情模态框 -->
+<div class="modal fade" id="historyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-alt me-2"></i>分析详情</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="historyContent" class="p-3 bg-light rounded"
+                     style="white-space: pre-wrap; max-height: 400px; overflow-y: auto;"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                <button type="button" class="btn btn-primary" onclick="copyHistoryContent()">
+                    <i class="fas fa-copy me-2"></i>复制内容
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 加载动画 -->
+<div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content border-0 bg-transparent">
+            <div class="modal-body text-center">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                    <span class="visually-hidden">加载中...</span>
+                </div>
+                <h5 class="text-white mt-3" id="loadingText">AI正在思考...</h5>
+                <p class="text-white-50 small mt-2">这可能需要10-20秒</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-message {
+        margin-bottom: 15px;
+        padding: 12px 16px;
+        border-radius: 15px;
+        max-width: 85%;
+        animation: fadeIn 0.3s;
+    }
+    .user-message {
+        background-color: #e3f2fd;
+        margin-left: auto;
+        border-bottom-right-radius: 5px;
+        border: 1px solid #bbdefb;
+    }
+    .ai-message {
+        background-color: #f5f5f5;
+        margin-right: auto;
+        border-bottom-left-radius: 5px;
+        border: 1px solid #e0e0e0;
+    }
+    .message-header {
+        font-weight: 600;
+        margin-bottom: 5px;
+        font-size: 0.9em;
+    }
+    .message-content {
+        line-height: 1.5;
+    }
+    .message-time {
+        font-size: 0.75em;
+        color: #888;
+        margin-top: 8px;
+        text-align: right;
+    }
+    #chatMessages::-webkit-scrollbar {
+        width: 8px;
+    }
+    #chatMessages::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    #chatMessages::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    #chatMessages::-webkit-scrollbar-thumb:hover {
+        background: #555;
+    }
+    .typing-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 10px 15px;
+        background-color: #f5f5f5;
+        border-radius: 15px;
+    }
+    .typing-dot {
+        width: 8px;
+        height: 8px;
+        background-color: #6c757d;
+        border-radius: 50%;
+        margin: 0 3px;
+        animation: typing 1.4s infinite;
+    }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes typing {
+        0%, 60%, 100% { transform: translateY(0); }
+        30% { transform: translateY(-8px); }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .ai-welcome-icon {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+</style>
+
+<script>
+// ==================== 全局变量和工具函数 ====================
+let isProcessing = false;
+
+// 显示消息
+function showMessage(content, isUser = false) {
+    const chatMessages = document.getElementById('chatMessages');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+
+    if (welcomeMessage) {
+        welcomeMessage.classList.add('d-none');
+    }
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `chat-message ${isUser ? 'user-message' : 'ai-message'}`;
+
+    const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+
+    if (isUser) {
+        messageDiv.innerHTML = `
+            <div class="message-header">
+                <i class="fas fa-user me-2 text-primary"></i>您
+            </div>
+            <div class="message-content">${escapeHtml(content)}</div>
+            <div class="message-time">${time}</div>
+        `;
+    } else {
+        // 格式化AI回复（简单的Markdown转换）
+        let formattedContent = formatAIMessage(content);
+
+        messageDiv.innerHTML = `
+            <div class="message-header">
+                <i class="fas fa-robot me-2 text-success"></i>AI财务顾问
+            </div>
+            <div class="message-content">${formattedContent}</div>
+            <div class="message-time">${time}</div>
+        `;
+    }
+
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// 显示正在输入指示器
+function showTypingIndicator() {
+    const chatMessages = document.getElementById('chatMessages');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+
+    if (welcomeMessage) {
+        welcomeMessage.classList.add('d-none');
+    }
+
+    const typingDiv = document.createElement('div');
+    typingDiv.className = 'chat-message ai-message';
+    typingDiv.id = 'typingIndicator';
+    typingDiv.innerHTML = `
+        <div class="message-header">
+            <i class="fas fa-robot me-2 text-success"></i>AI财务顾问
+        </div>
+        <div class="typing-indicator">
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+            <span class="typing-dot"></span>
+        </div>
+        <div class="message-time">思考中...</div>
+    `;
+
+    chatMessages.appendChild(typingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// 移除正在输入指示器
+function removeTypingIndicator() {
+    const typingIndicator = document.getElementById('typingIndicator');
+    if (typingIndicator) {
+        typingIndicator.remove();
+    }
+}
+
+// 格式化AI消息（简单Markdown转HTML）
+function formatAIMessage(text) {
+    if (!text) return '';
+
+    return text
+        // 转义HTML
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        // 标题
+        .replace(/^### (.*$)/gm, '<h6 class="mt-3 mb-2 fw-bold">$1</h6>')
+        .replace(/^## (.*$)/gm, '<h5 class="mt-3 mb-2 fw-bold border-bottom pb-1">$1</h5>')
+        .replace(/^# (.*$)/gm, '<h4 class="mt-3 mb-3 fw-bold text-primary">$1</h4>')
+        // 粗体
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // 斜体
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // 列表
+        .replace(/^(\d+)\./gm, '<br><strong>$1.</strong>')
+        .replace(/^[-*] (.*$)/gm, '<br>• $1')
+        // 换行
+        .replace(/\n/g, '<br>')
+        // 代码块
+        .replace(/`([^`]+)`/g, '<code class="bg-light p-1 rounded">$1</code>')
+        // 高亮重要信息
+        .replace(/重要：/g, '<span class="text-danger fw-bold">重要：</span>')
+        .replace(/建议：/g, '<span class="text-success fw-bold">建议：</span>')
+        .replace(/注意：/g, '<span class="text-warning fw-bold">注意：</span>');
+}
+
+// HTML转义
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 显示加载模态框
+function showLoading(text = 'AI正在思考...') {
+    document.getElementById('loadingText').textContent = text;
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loadingModal.show();
+    isProcessing = true;
+}
+
+// 隐藏加载模态框
+function hideLoading() {
+    const loadingModal = bootstrap.Modal.getInstance(document.getElementById('loadingModal'));
+    if (loadingModal) {
+        loadingModal.hide();
+    }
+    isProcessing = false;
+}
+
+// ==================== AI功能函数 ====================
+
+// 智能账单分析
+async function analyzeBills() {
+    if (isProcessing) return;
+
+    showMessage("请分析我的账单情况", true);
+    showLoading("正在分析您的账单数据...");
+
+    try {
+        const response = await fetch('/ai_analyze_bills', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showMessage(data.analysis);
+        } else {
+            showMessage(`❌ ${data.message || '分析失败，请稍后重试。'}`);
+        }
+    } catch (error) {
+        console.error('分析失败:', error);
+        showMessage('网络错误，请检查连接后重试。');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 获取财务规划
+async function getPlan(target) {
+    if (isProcessing) return;
+
+    showMessage(`请帮我制定${target}`, true);
+    showLoading(`正在制定${target}...`);
+
+    try {
+        const response = await fetch('/ai_financial_plan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ target: target })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showMessage(data.plan);
+        } else {
+            showMessage(`❌ ${data.message || '规划失败，请稍后重试。'}`);
+        }
+    } catch (error) {
+        console.error('规划失败:', error);
+        showMessage('网络错误，请检查连接后重试。');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 提交自定义规划
+function submitCustomPlan() {
+    const customTarget = document.getElementById('customTarget').value.trim();
+    if (!customTarget) {
+        alert('请输入规划目标');
+        return;
+    }
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('customPlanModal'));
+    if (modal) {
+        modal.hide();
+    }
+
+    document.getElementById('customTarget').value = '';
+    getPlan(customTarget);
+}
+
+// 发送消息
+async function sendMessage() {
+    if (isProcessing) return;
+
+    const input = document.getElementById('chatInput');
+    const message = input.value.trim();
+
+    if (!message) return;
+
+    // 显示用户消息
+    showMessage(message, true);
+    input.value = '';
+
+    // 显示正在输入指示器
+    showTypingIndicator();
+    isProcessing = true;
+
+    try {
+        const response = await fetch('/ai_chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ message: message })
+        });
+
+        const data = await response.json();
+
+        // 移除正在输入指示器
+        removeTypingIndicator();
+
+        if (data.success) {
+            showMessage(data.response);
+        } else {
+            showMessage(`❌ ${data.message || '回答失败，请稍后重试。'}`);
+        }
+    } catch (error) {
+        console.error('发送失败:', error);
+        removeTypingIndicator();
+        showMessage('网络错误，请检查连接后重试。');
+    } finally {
+        isProcessing = false;
+    }
+}
+
+// 快捷提问
+function askQuestion(question) {
+    document.getElementById('chatInput').value = question;
+    sendMessage();
+}
+
+// 查看历史详情
+async function viewHistoryDetail(id) {
+    showLoading('加载分析详情...');
+
+    try {
+        const response = await fetch(`/api/ai_detail/${id}`);
+        const data = await response.json();
+
+        if (data.success) {
+            const content = formatAIMessage(data.response);
+            document.getElementById('historyContent').innerHTML = content;
+            const modal = new bootstrap.Modal(document.getElementById('historyModal'));
+            modal.show();
+        } else {
+            alert(data.message || '加载失败');
+        }
+    } catch (error) {
+        console.error('加载失败:', error);
+        alert('加载失败，请稍后重试');
+    } finally {
+        hideLoading();
+    }
+}
+
+// 复制历史内容
+function copyHistoryContent() {
+    const content = document.getElementById('historyContent').textContent;
+    navigator.clipboard.writeText(content)
+        .then(() => alert('内容已复制到剪贴板'))
+        .catch(err => console.error('复制失败:', err));
+}
+
+// 清空聊天
+function clearChat() {
+    if (!confirm('确定要清空当前对话吗？')) return;
+
+    const chatMessages = document.getElementById('chatMessages');
+    const welcomeMessage = document.getElementById('welcomeMessage');
+
+    // 保留欢迎消息，移除其他消息
+    Array.from(chatMessages.children).forEach(child => {
+        if (child.id !== 'welcomeMessage') {
+            child.remove();
+        }
+    });
+
+    if (welcomeMessage) {
+        welcomeMessage.classList.remove('d-none');
+    }
+}
+
+// 测试AI服务
+async function testAIService() {
+    const apiStatus = document.getElementById('apiStatus');
+    apiStatus.className = 'badge bg-warning';
+    apiStatus.textContent = '测试中...';
+
+    try {
+        const response = await fetch('/ai_test');
+        const data = await response.json();
+
+        if (data.success) {
+            apiStatus.className = 'badge bg-success';
+            apiStatus.textContent = '正常';
+
+            // 显示测试结果
+            showMessage(`✅ ${data.message}<br><small>响应: ${data.response}</small>`);
+        } else {
+            apiStatus.className = 'badge bg-danger';
+            apiStatus.textContent = '异常';
+
+            showMessage(`❌ ${data.message}<br><small>错误: ${data.error}</small>`);
+        }
+    } catch (error) {
+        apiStatus.className = 'badge bg-danger';
+        apiStatus.textContent = '连接失败';
+
+        console.error('测试失败:', error);
+        showMessage('❌ 无法连接到AI服务，请检查网络连接。');
+    }
+}
+
+// ==================== 页面初始化 ====================
+document.addEventListener('DOMContentLoaded', function() {
+    // 输入框回车发送
+    const chatInput = document.getElementById('chatInput');
+    chatInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    // 自动测试AI连接
+    setTimeout(testAIService, 1000);
+
+    // 检查数据状态
+    {% if not has_data %}
+    document.getElementById('chatInput').placeholder = '请先添加收支记录才能使用AI功能...';
+    {% endif %}
+});
+</script>
+{% endblock %}

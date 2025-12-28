@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <!-- 左侧：统计卡片 -->
+    <div class="col-md-4">
+        <!-- 本月统计卡片 -->
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt me-2"></i>本月统计</h5>
+                <span class="badge bg-light text-primary">{{ now().strftime('%Y年%m月') if now else '' }}</span>
+            </div>
+            <div class="card-body">
+                <!-- 本月收入 -->
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-success bg-opacity-10 rounded">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-success text-white rounded-circle p-2 me-3">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">本月收入</div>
+                            <div class="fw-bold fs-5 text-success">¥ {{ "%.2f"|format(monthly_income) }}</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-money-bill-wave text-success fs-4"></i>
+                </div>
+
+                <!-- 本月支出 -->
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-danger bg-opacity-10 rounded">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-danger text-white rounded-circle p-2 me-3">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">本月支出</div>
+                            <div class="fw-bold fs-5 text-danger">¥ {{ "%.2f"|format(monthly_expense) }}</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-shopping-cart text-danger fs-4"></i>
+                </div>
+
+                <!-- 本月余额 -->
+                <div class="d-flex justify-content-between align-items-center mb-3 p-2 bg-primary bg-opacity-10 rounded">
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white rounded-circle p-2 me-3">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small">本月余额</div>
+                            <div class="fw-bold fs-5 text-primary">¥ {{ "%.2f"|format(monthly_balance) }}</div>
+                        </div>
+                    </div>
+                    <i class="fas fa-balance-scale text-primary fs-4"></i>
+                </div>
+
+                <!-- 收支比例 -->
+                {% if monthly_income > 0 %}
+                <div class="mt-4">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small">收支比例</span>
+                        <span class="text-muted small">
+                            {% set expense_percent = (monthly_expense / monthly_income * 100)|round(1) if monthly_income > 0 else 0 %}
+                            {{ expense_percent }}% / {{ (100 - expense_percent)|round(1) }}%
+                        </span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-danger" style="width: {{ expense_percent }}%"
+                             title="支出占比 {{ expense_percent }}%"></div>
+                        <div class="progress-bar bg-success" style="width: {{ 100 - expense_percent }}%"
+                             title="结余占比 {{ (100 - expense_percent)|round(1) }}%"></div>
+                    </div>
+                    <div class="d-flex justify-content-between mt-2">
+                        <small class="text-danger">
+                            <i class="fas fa-circle me-1"></i>支出 {{ expense_percent }}%
+                        </small>
+                        <small class="text-success">
+                            <i class="fas fa-circle me-1"></i>结余 {{ (100 - expense_percent)|round(1) }}%
+                        </small>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 总账单统计 -->
+        <div class="card dashboard-card mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>总账单统计</h5>
+            </div>
+            <div class="card-body">
+                <!-- 累计收入 -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-circle text-success me-2"></i>
+                        <span>累计收入</span>
+                    </div>
+                    <span class="fw-bold text-success">¥ {{ "%.2f"|format(total_income) }}</span>
+                </div>
+
+                <!-- 累计支出 -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-circle text-danger me-2"></i>
+                        <span>累计支出</span>
+                    </div>
+                    <span class="fw-bold text-danger">¥ {{ "%.2f"|format(total_expense) }}</span>
+                </div>
+
+                <!-- 当前余额 -->
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-circle text-primary me-2"></i>
+                        <span>当前余额</span>
+                    </div>
+                    <span class="fw-bold fs-5 text-primary">¥ {{ "%.2f"|format(total_balance) }}</span>
+                </div>
+
+                <div class="text-center mt-3">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle me-1"></i>
+                        从注册至今的总账单
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 快速操作 -->
+        <div class="card dashboard-card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>快速操作</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <a href="{{ url_for('add_record') }}" class="btn btn-primary w-100 py-2">
+                            <i class="fas fa-plus-circle me-2"></i>添加记账记录
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{{ url_for('reports') }}" class="btn btn-outline-primary w-100 py-2">
+                            <i class="fas fa-chart-pie me-2"></i>查看报表
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <button onclick="location.href='{{ url_for('add_record') }}'"
+                                class="btn btn-outline-success w-100 py-2">
+                            <i class="fas fa-money-bill-wave me-2"></i>记收入
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <button onclick="location.href='{{ url_for('add_record') }}'"
+                                class="btn btn-outline-danger w-100 py-2">
+                            <i class="fas fa-shopping-cart me-2"></i>记支出
+                        </button>
+                    </div>
+                    <div class="col-6">
+                        <a href="{{ url_for('logout') }}" class="btn btn-outline-secondary w-100 py-2">
+                            <i class="fas fa-sign-out-alt me-2"></i>退出登录
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧：最近记录 -->
+    <div class="col-md-8">
+        <div class="card dashboard-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>最近记录</h5>
+                <span class="badge bg-primary">{{ recent_records|length }} 条记录</span>
+            </div>
+            <div class="card-body">
+                {% if recent_records %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>日期</th>
+                                    <th>分类</th>
+                                    <th>描述</th>
+                                    <th class="text-end">金额</th>
+                                    <th class="text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in recent_records %}
+                                <tr>
+                                    <td>{{ record.record_date }}</td>
+                                    <td>
+                                        <span class="badge {% if record.category_type == '收入' %}bg-success{% else %}bg-danger{% endif %}">
+                                            {% if record.category_type == '收入' %}
+                                            <i class="fas fa-arrow-up me-1"></i>
+                                            {% else %}
+                                            <i class="fas fa-arrow-down me-1"></i>
+                                            {% endif %}
+                                            {{ record.category_name }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if record.description %}
+                                            {{ record.description[:20] }}{% if record.description|length > 20 %}...{% endif %}
+                                        {% else %}
+                                            <span class="text-muted">无描述</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end {% if record.amount > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                        {% if record.amount > 0 %}+{% endif %}{{ "%.2f"|format(record.amount) }}
+                                    </td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('delete_record', record_id=record.id) }}"
+                                           class="btn btn-sm btn-outline-danger"
+                                           onclick="return confirm('确定要删除这条记录吗？')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 收入支出统计 -->
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <div class="card bg-success bg-opacity-10 border-success">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-arrow-up text-success me-2"></i>
+                                            <span class="text-muted">最近收入</span>
+                                        </div>
+                                        <span class="fw-bold text-success">
+                                            ¥ {{ "%.2f"|format(recent_records|selectattr('amount', 'gt', 0)|map(attribute='amount')|sum) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-danger bg-opacity-10 border-danger">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-arrow-down text-danger me-2"></i>
+                                            <span class="text-muted">最近支出</span>
+                                        </div>
+                                        <span class="fw-bold text-danger">
+                                            ¥ {{ "%.2f"|format(recent_records|selectattr('amount', 'lt', 0)|map(attribute='amount')|sum|abs) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">还没有任何记录</h5>
+                        <p class="text-muted">开始记录你的收支情况吧！</p>
+                        <a href="{{ url_for('add_record') }}" class="btn btn-primary mt-2">
+                            <i class="fas fa-plus me-2"></i>添加第一条记录
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- 收支提示 -->
+        <div class="alert alert-info mt-3">
+            <div class="d-flex">
+                <div class="me-3">
+                    <i class="fas fa-lightbulb fa-2x text-info"></i>
+                </div>
+                <div>
+                    <h6 class="alert-heading">记账小贴士</h6>
+                    <p class="mb-0 small">
+                        • 添加收入时选择"收入"分类并输入正数金额<br>
+                        • 添加支出时选择"支出"分类并输入负数金额（如 -50）<br>
+                        • 及时记账有助于更好管理个人财务
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// 页面加载完成后添加一些交互效果
+document.addEventListener('DOMContentLoaded', function() {
+    // 为表格行添加悬停效果
+    const tableRows = document.querySelectorAll('table tbody tr');
+    tableRows.forEach(row => {
+        row.addEventListener('mouseenter', function() {
+            this.style.backgroundColor = '#f8f9fa';
+        });
+        row.addEventListener('mouseleave', function() {
+            this.style.backgroundColor = '';
+        });
+    });
+
+    // 获取当前月份显示
+    const now = new Date();
+    const monthElement = document.querySelector('.card-header .badge.bg-light');
+    if (monthElement) {
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        monthElement.textContent = `${now.getFullYear()}年${month}月`;
+    }
+});
+</script>
+{% endblock %}
